@@ -7,30 +7,31 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-
+#define MESSAGESIZE 4096
 #include "aurras.h"
 
 char* tasks[2048];
 int taskStatus[2048];
+int filtros[2048][5];
+
+
 
 int filtroMaxValue[2048];
 char* filtroNome[2048];
 char* filtroApp[2048];
 
-int usersAlto = 0;
-int usersBaixo = 0;
-int usersEco = 0;
-int usersRapido = 0;
-int usersLento = 0;
+int users[5];
+
+//int usersAlto = 0;
+//int users[1] = 0;
+//int usersEco = 0;
+//int usersRapido = 0;
+//int usersLento = 0;
 
 
 char* args[100];
 
-int usersAltoAux[2048];
-int usersBaixoAux[2048];
-int usersEcoAux[2048];
-int usersRapidoAux[2048];
-int usersLentoAux[2048];
+int pids[2048];
 
 int iTask = 0;
 
@@ -61,20 +62,60 @@ char** parse_conf(int* narg,char file_path[]){
     }
     *narg = i;
     return args;
-/*
-    for (int j = 0; j < i; j++)
-    {
-    printf("print : %s\n",args[j]);
-    }
-    */
+
+
     
+}
+void save_state(){
+    int fd = open("./etc/state.conf", O_CREAT | O_TRUNC | O_WRONLY, 0666);
+
+    char messag[64];
+    sprintf(messag, "%d\n",users[0]);
+    write(fd, messag, strlen(messag));
+    
+    sprintf(messag, "%d\n",users[1]);
+    write(fd, messag, strlen(messag));
+    
+    sprintf(messag, "%d\n",users[2]);
+    write(fd, messag, strlen(messag));
+    
+    sprintf(messag, "%d\n",users[3]);
+    write(fd, messag, strlen(messag));
+    
+    sprintf(messag, "%d",users[4]);
+    write(fd, messag, strlen(messag));
+    
+    close(fd);
 }
 
 void chld_handler(int sig){
 
+    pid_t pidfilho = wait(NULL);
+    
+    int nargs;
+    char** conf_args = parse_conf(&nargs ,"./etc/state.conf");
+    int i;
+    for (i = 0; i < iTask; i++)
+    {
+        if (pidfilho == pids[i])
+        {
+        
+        printf(" %d <-\n",pidfilho);
+        
+        printf(" %d <-\n",pids[i]);
 
-    taskStatus[iTask-1] = 1;
-    wait(NULL);
+        users[0] -= filtros[i][0];
+        users[1] -= filtros[i][1];
+        users[2] -= filtros[i][2];
+        users[4] -= filtros[i][3];
+        users[3] -= filtros[i][4]; 
+
+        taskStatus[i] = 1;
+    
+        }
+        
+    }
+    
 
 }
 
@@ -96,9 +137,9 @@ int main(int argc, char *argv[]) {
     int nFiltros = 0;
     for (int l=0;l < nargs ; l = l + 3){
         
-        filtroNome[nFiltros]     = strdup(conf_args[ l ]);    //printf("%s\n",conf_args[ l ]);
-        filtroApp[nFiltros]      = strdup(conf_args[ l + 1]); //printf("%s\n",conf_args[ l+1 ]);
-        filtroMaxValue[nFiltros]   = atoi(conf_args[ l + 2]); //printf("%s\n",conf_args[ l + 2 ]);
+        filtroNome[nFiltros]     = strdup(conf_args[ l ]);    
+        filtroApp[nFiltros]      = strdup(conf_args[ l + 1]); 
+        filtroMaxValue[nFiltros] = atoi(conf_args[ l + 2]); 
         nFiltros++;
       
     }
@@ -111,7 +152,7 @@ int main(int argc, char *argv[]) {
         int client_server_fifo = open("client_server_fifo", O_RDONLY);
         int server_client_fifo = open("server_client_fifo", O_WRONLY);
         
-        if(read(client_server_fifo, buffer, MESSAGESIZE)>0){ // le a msg do cliente
+        if(read(client_server_fifo, buffer, MESSAGESIZE)>0){ 
         
         if(strncmp(buffer, "transform", 9) == 0){
 
@@ -162,109 +203,110 @@ int main(int argc, char *argv[]) {
 
             int pidaux;
             int status;
+            for (size_t i = 0; i < 5; i++)
+            {
+                filtros[iTask-1][i] = 0;
+            }
             
             for (size_t k = 2; k < i; k++){
                 if (strcmp(args[k],"alto") == 0){
-                    usersAlto++;
-                    //usersAltoAux++;
+                    users[0]++;
+                    filtros[iTask-1][0]++;
                 }else if (strcmp(args[k],"baixo") == 0){
-                    usersBaixo++;
-                    //usersBaixoAux++;
+                    users[1]++;
+                    filtros[iTask-1][1]++;
                 }else if (strcmp(args[k],"eco") == 0){
-                    usersEco++;
-                    //usersEcoAux++;         
+                    users[2]++;     
+                    filtros[iTask-1][2]++;    
                 }else if (strcmp(args[k],"rapido") == 0){
-                    usersRapido++;
-                    //usersRapidoAux++;    
+                    users[3]++;    
+                    filtros[iTask-1][3]++;
                 }else if (strcmp(args[k],"lento") == 0){
-                    usersLento++;
-                    //usersLentoAux++;
+                    users[4]++;
+                    filtros[iTask-1][4]++;
                 }
             }
-            int fd = open("./etc/state.conf", O_WRONLY);
-            char messag[64];
-            sprintf(messag, "%d\n",usersAlto);
             
-            write(fd, messag, strlen(messag));
+            save_state();
+            
+            if((pids[iTask-1] = fork()) == 0) {
 
-            if((pid = fork()) == 0) {
-
-            for (int j=2; j<i;j++){
-                wait(&status);
-                if((pidaux = fork()) == 0) {
-                
-                    int ifd;
-                    int ofd;
-
-                    if(i==3){
-                        ifd = open(args[0], O_RDONLY, 0666);
-                        ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
-
-                    }else if(j==2){
-                        ifd = open(args[0], O_RDONLY, 0666);
-                        ofd = open(output1, O_CREAT | O_TRUNC | O_WRONLY, 0666);
-
-                    }else if(j==i-1){
-                        ifd = open(output2, O_RDONLY, 0666);
-                        ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
+                for (int j=2; j < i;j++){
+                    wait(&status);
+                    if((pidaux = fork()) == 0) {
+                    
+                        int ifd;
+                        int ofd;
+    
+                        if(i==3){
+                            ifd = open(args[0], O_RDONLY, 0666);
+                            ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
+    
+                        }else if(j==2){
+                            ifd = open(args[0], O_RDONLY, 0666);
+                            ofd = open(output1, O_CREAT | O_TRUNC | O_WRONLY, 0666);
+    
+                        }else if(j==i-1){
+                            ifd = open(output2, O_RDONLY, 0666);
+                            ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
+                        }else{
+                            ifd = open(output1, O_RDONLY, 0666);
+                            ofd = open(output2, O_CREAT | O_WRONLY, 0666);
+    
+                            tmp = output1;
+                            output1 = output2;
+                            output2 = tmp;
+                        }
+    
+                        dup2(ifd,0);
+                        dup2(ofd,1);
+    
+                        close(ifd);
+                        close(ofd);
+    
+                        char* folder = malloc(MESSAGESIZE);
+                        if (strcmp(args[j],"alto") == 0){
+                        
+                                strcat(folder,"./");
+                                strcat(folder,argv[2]);
+                                strcat(folder,"/aurrasd-gain-double");
+                                 
+                                
+                        }else if (strcmp(args[j],"rapido") == 0){
+                        
+                                strcat(folder,"./");
+                                strcat(folder,argv[2]);
+                                strcat(folder,"/aurrasd-tempo-double");
+    
+                        }else if (strcmp(args[j],"lento") == 0){
+                        
+                                strcat(folder,"./");
+                                strcat(folder,argv[2]);
+                                strcat(folder,"/aurrasd-tempo-half");
+    
+                        }else if (strcmp(args[j],"eco") == 0){
+                        
+                                strcat(folder,"./");
+                                strcat(folder,argv[2]);
+                                strcat(folder,"/aurrasd-echo");
+    
+                        }else if (strcmp(args[j],"baixo") == 0){
+                        
+                            strcat(folder,"./");
+                            strcat(folder,argv[2]);
+                            strcat(folder,"/aurrasd-gain-half");
+    
+                        }
+                        execl(folder,folder,NULL);
                     }else{
-                        ifd = open(output1, O_RDONLY, 0666);
-                        ofd = open(output2, O_CREAT | O_WRONLY, 0666);
-
-                        tmp = output1;
-                        output1 = output2;
-                        output2 = tmp;
-                    }
-
-                    dup2(ifd,0);
-                    dup2(ofd,1);
-
-                    close(ifd);
-                    close(ofd);
-
-                    char* folder = malloc(MESSAGESIZE);
-                    if (strcmp(args[j],"alto") == 0){
-
-                            strcat(folder,"./");
-                            strcat(folder,argv[2]);
-                            strcat(folder,"/aurrasd-gain-double");
-                             
-                            
-                    }else if (strcmp(args[j],"rapido") == 0){
-
-                            strcat(folder,"./");
-                            strcat(folder,argv[2]);
-                            strcat(folder,"/aurrasd-tempo-double");
-
-                    }else if (strcmp(args[j],"lento") == 0){
-
-                            strcat(folder,"./");
-                            strcat(folder,argv[2]);
-                            strcat(folder,"/aurrasd-tempo-half");
-
-                    }else if (strcmp(args[j],"eco") == 0){
-
-                            strcat(folder,"./");
-                            strcat(folder,argv[2]);
-                            strcat(folder,"/aurrasd-echo");
-
-                    }else if (strcmp(args[j],"baixo") == 0){
-
-                        strcat(folder,"./");
-                        strcat(folder,argv[2]);
-                        strcat(folder,"/aurrasd-gain-half");
-
-                    }
-                execl(folder,folder,NULL);
-            }// if dentro 
-            else{
-                signal(SIGCHLD,chld_handler_filtro);
-            } // else
-            }  // for
-            exit(0);
+                        signal(SIGCHLD,chld_handler_filtro);
+                    } 
+                }  
+                exit(0);
             }else{
+                
                 signal(SIGCHLD,chld_handler);
-            }//if de fora
+            }
             
 
 
@@ -288,7 +330,7 @@ int main(int argc, char *argv[]) {
             for (int i = 0; i < nFiltros; i++)
             {
             
-            sprintf(message, "filter %s: 0/%d\n",filtroNome[i],filtroMaxValue[i]);
+            sprintf(message, "filter %s: %d/%d\n",filtroNome[i],users[i],filtroMaxValue[i]);
             write(server_client_fifo, message, strlen(message));
             }
             

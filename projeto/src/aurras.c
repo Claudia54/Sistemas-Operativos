@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#define MESSAGESIZE 4096
 #include "aurras.h"
 
 
