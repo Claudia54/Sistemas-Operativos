@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "argus.h"
+#include "aurras.h"
 
 
 char* concat(int argc,char* argv[]){
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         // le o que vem do server
         while((bytesRead = read(server_client_fifo, string, MESSAGESIZE)) > 0)
             write(STDOUT_FILENO, string, bytesRead);   
-        printf("acabou de ler");         
+              
         close(server_client_fifo);
 
     
