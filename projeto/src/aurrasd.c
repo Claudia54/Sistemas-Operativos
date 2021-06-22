@@ -157,12 +157,12 @@ int main(int argc, char *argv[]) {
             strcpy(command, buffer + 9);
             
             taskStatus[iTask] = 0;
-            tasks[iTask] = strdup(buffer);
+            tasks[iTask] = strdup(buffer);// transform hasdjbasd hbasdhf eco eco eco
             
             iTask++;
 
             char message[64];
-            sprintf(message, "pending\n");
+            sprintf(message, "pending\n"); 
             
             write(server_client_fifo, message, strlen(message));
             sprintf(message, "processing\n");
@@ -195,7 +195,7 @@ int main(int argc, char *argv[]) {
             strcat(output1,id);
             
             char* output2 = malloc(MESSAGESIZE);
-            strcat(output2,"./tmp/outputTMP1_");
+            strcat(output2,"./tmp/outputTMP2_");
             strcat(output2,id);
 
             int pidaux;
@@ -226,27 +226,27 @@ int main(int argc, char *argv[]) {
             
             save_state();
             
-            if((pids[iTask-1] = fork()) == 0) {
+            if((pids[iTask-1] = fork()) == 0) { // tarefas ser executadas concorrentemente
 
                 for (int j=2; j < i;j++){
                     wait(&status);
-                    if((pidaux = fork()) == 0) {
+                    if((pidaux = fork()) == 0) { // filtros ser executados concorrentemente
                     
                         int ifd;
                         int ofd;
     
-                        if(i==3){
+                        if(i==3){// se so tiver 1 filtro
                             ifd = open(args[0], O_RDONLY, 0666);
                             ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
     
-                        }else if(j==2){
+                        }else if(j==2){ // se tiver mais que um filtro e for a primeira aplicacao de filtro
                             ifd = open(args[0], O_RDONLY, 0666);
                             ofd = open(output1, O_CREAT | O_TRUNC | O_WRONLY, 0666);
     
-                        }else if(j==i-1){
+                        }else if(j==i-1){ // se tiver mais que um filtro e for a ultima aplicacao de filtro
                             ifd = open(output2, O_RDONLY, 0666);
                             ofd = open(args[1], O_CREAT | O_TRUNC | O_WRONLY, 0666);
-                        }else{
+                        }else{// aplicacoes de filtro intermedias
                             ifd = open(output1, O_RDONLY, 0666);
                             ofd = open(output2, O_CREAT | O_WRONLY, 0666);
     
@@ -255,8 +255,8 @@ int main(int argc, char *argv[]) {
                             output2 = tmp;
                         }
     
-                        dup2(ifd,0);
-                        dup2(ofd,1);
+                        dup2(ifd,0);// stdin -> ifd
+                        dup2(ofd,1);// stdout -> ofd
     
                         close(ifd);
                         close(ofd);
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
             if(fork() == 0) {
 
             for (int i = 0; i < iTask; i++){
-                if (!taskStatus[i]){    
+                if (!taskStatus[i]){ // se nao tiver acabado escreve   
                     char message[64];   
                     sprintf(message, "task #%d: %s\n",i+1,tasks[i]);
 
