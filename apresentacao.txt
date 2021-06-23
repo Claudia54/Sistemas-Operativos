@@ -1,7 +1,0 @@
-Comecamos por analisar o anexo B e atraves desse anexo verifiquei que necessitava 
-de substituir na defenicao do c(n) o n por n+1 para calcular a funcao de recursividade mutua. 
-Atraves da simplificacao do c(n+1), consegui obter as funcoes auxiliares que usei a seguir na defenicao de recursividade mutua adaptada a haskell, a funcao loop que o enunciado tinha.
-para definir o caso base substitui o n por 0 nas defenicoes das funcoes.
-
- 4n+2/n+2 -> sub 0 ->
-
